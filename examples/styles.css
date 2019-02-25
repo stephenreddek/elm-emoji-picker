@@ -1,0 +1,83 @@
+.elm-emoji-picker .emoji {
+  font-size: 27px;
+  font-family: "apple color emoji";
+  display: inline-block;
+  padding: 6px 5px 3px 5px;
+  vertical-align: middle;
+  line-height: 1;
+  border-radius: 5px;
+}
+
+.elm-emoji-picker .emoji:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
+
+.elm-emoji-picker .icon-panel {
+  width: 315px;
+  height: 40px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 7px 0px 0px 0px;
+  border-top-width: 1px;
+  border-top-color: rgba(0, 0, 0, 0.15);
+  border-top-style: solid;
+}
+
+.elm-emoji-picker .emojis-main {
+  width: 309px;
+  height: 350px;
+  overflow-y: auto;
+  padding: 0px 0px 0px 5px;
+  white-space: normal;
+}
+
+.elm-emoji-picker .emoji-picker {
+  padding: 0px;
+  background-color: #fff;
+  border-radius: 7px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.15);
+  box-shadow: 0px 6px 2px 0px rgba(0, 0, 0, 0.13);
+  z-index: 5;
+  width: 315px;
+  height: 400px;
+  text-align:  left;
+}
+
+.elm-emoji-picker .emoji-modal-background {
+  z-index: 4;
+  position: fixed;
+  background-color: rgba(0,0,0,0);
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.elm-emoji-picker .category {
+  width: 300px;
+}
+
+.elm-emoji-picker .category-title {
+  font-size: 18px;
+  font-family: sans-serif;
+  margin: 7px 0px 0px 0px;
+  padding: 2px 6px 3px 7px;
+  color: #555;
+  background-color: #fff;
+}
+
+.elm-emoji-picker .category-icon {
+  margin: 5px 7px 5px 6px;
+}
+
+.elm-emoji-picker .path-active {
+  fill: rgba(0, 75, 200, 0.8);
+}
+
+.elm-emoji-picker .path-inactive {
+  fill: rgba(0, 0, 0, 0.5);
+}

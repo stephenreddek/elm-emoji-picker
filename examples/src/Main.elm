@@ -120,7 +120,7 @@ view model =
     let
         -- (6) include the picker in the view
         picker =
-            EmojiPicker.view model.emojiModel
+            EmojiPicker.view { emojiDisplay = Nothing } model.emojiModel
                 |> fromUnstyled
                 |> Html.Styled.map EmojiMsg
     in

@@ -1,6 +1,6 @@
 module EmojiPicker exposing
     ( Model, Msg(..)
-    , PickerConfig, init
+    , PickerConfig, init, ViewConfig
     , view, update
     )
 
@@ -16,7 +16,7 @@ for an example of how to use the picker in your application!
 
 # Config & Initialization
 
-@docs PickerConfig, init
+@docs PickerConfig, init, ViewConfig
 
 
 # Functions to use in integration
@@ -50,6 +50,7 @@ configuration parameters.
 `offsetX`: the horizontal offset from where the picker is declared
 `offsetY`: the vertical offset from where the picker is declared
 `closeOnSelect`: whether or not the close the picker after an emoji is selected
+`emojiDisplay`: A function use to display the emojis differently than native
 
 -}
 type alias PickerConfig =
@@ -57,6 +58,15 @@ type alias PickerConfig =
     , offsetY : Float
     , closeOnSelect : Bool
     }
+
+
+{-| When viewing the emoji picker, you'll need to provide these parameters.
+
+`emojiDisplay`: A function use to display the emojis differently than native
+
+-}
+type alias ViewConfig msg =
+    { emojiDisplay : Maybe (String -> Html msg) }
 
 
 {-| The internal state of the emoji picker.
@@ -197,18 +207,23 @@ selectSkinVariation color emoji =
 -}
 
 
-displayEmoji : SkinColor -> Emoji -> Html Msg
-displayEmoji color emoji =
+displayEmoji : ViewConfig Msg -> SkinColor -> Emoji -> Html Msg
+displayEmoji config color emoji =
     let
         -- "native" is the literal emoji string
         native =
             selectSkinVariation color emoji
+
+        display =
+            config.emojiDisplay
+                |> Maybe.map (\f -> f native)
+                |> Maybe.withDefault (text native)
     in
     span
         [ class "emoji"
         , onClick (Select native)
         ]
-        [ text native ]
+        [ display ]
 
 
 
@@ -245,8 +260,8 @@ getEmojisFromList version names emojiDict =
 -}
 
 
-displayCategory : Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
-displayCategory version emojiDict color cat =
+displayCategory : ViewConfig Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
+displayCategory config version emojiDict color cat =
     let
         -- get the emojis from cat.emojis
         catEmojis =
@@ -254,7 +269,7 @@ displayCategory version emojiDict color cat =
 
         -- render them all
         renderedEmojis =
-            List.map (displayEmoji color) catEmojis
+            List.map (displayEmoji config color) catEmojis
     in
     div [ class "category" ]
         ([ p [ class "category-title" ]
@@ -292,8 +307,8 @@ displayCategoryIcon activeCat ( cat, icon ) =
 
 {-| Use this function to instantiate the actual `Html msg` for the picker.
 -}
-view : Model -> Html.Html Msg
-view model =
+view : ViewConfig Msg -> Model -> Html.Html Msg
+view config model =
     let
         -- i've set the version to 10 here, since that seems to be the version that
         -- is most widely supported. however, in the ideal case, you'd set this
@@ -302,7 +317,8 @@ view model =
             10
 
         emojis =
-            displayCategory emojiVersion
+            displayCategory config
+                emojiVersion
                 emojiDict
                 model.skinColor
                 model.activeCategory

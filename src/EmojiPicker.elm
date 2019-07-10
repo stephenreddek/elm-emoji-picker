@@ -323,6 +323,16 @@ view config model =
                 model.skinColor
                 model.activeCategory
 
+        mainPanel =
+            if model.hidden then
+                []
+
+            else
+                [ div [ class "emojis-main" ]
+                    [ emojis ]
+                , div [ class "icon-panel" ] icons
+                ]
+
         icons =
             List.map (displayCategoryIcon model.activeCategory) iconList
     in
@@ -334,10 +344,7 @@ view config model =
             , hidden model.hidden
             , class "emoji-picker"
             ]
-            [ div [ class "emojis-main" ]
-                [ emojis ]
-            , div [ class "icon-panel" ] icons
-            ]
+            mainPanel
         , div
             [ class "emoji-modal-background"
             , onClick Toggle

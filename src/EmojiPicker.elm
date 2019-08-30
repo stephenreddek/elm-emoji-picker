@@ -25,13 +25,14 @@ for an example of how to use the picker in your application!
 
 -}
 
-import Dict exposing (Dict, empty, get, isEmpty, size)
+import Dict exposing (Dict, get, isEmpty)
 import Emojis exposing (emojiDict)
-import Html exposing (Attribute, Html, div, h1, img, p, span, text)
+import Html exposing (Html, div, p, span, text)
 import Html.Attributes exposing (class, hidden, style)
-import Html.Events exposing (on, onClick)
+import Html.Events exposing (preventDefaultOn)
 import Icons exposing (..)
-import String exposing (String, cons, join)
+import Json.Decode
+import String exposing (String)
 import Tuple exposing (first)
 import Types exposing (Category, Emoji)
 
@@ -221,7 +222,7 @@ displayEmoji config color emoji =
     in
     span
         [ class "emoji"
-        , onClick (Select native)
+        , preventDefaultOn "click" (Json.Decode.succeed ( Select native, True ))
         ]
         [ display ]
 
@@ -301,7 +302,7 @@ displayCategoryIcon activeCat ( cat, icon ) =
 
         -- adds "inactive" class
     in
-    span [ onClick (SelectCategory cat) ]
+    span [ preventDefaultOn "click" (Json.Decode.succeed ( SelectCategory cat, True )) ]
         [ updatedIcon ]
 
 
@@ -347,7 +348,7 @@ view config model =
             mainPanel
         , div
             [ class "emoji-modal-background"
-            , onClick Toggle
+            , preventDefaultOn "click" (Json.Decode.succeed ( Toggle, True ))
             ]
             []
         ]

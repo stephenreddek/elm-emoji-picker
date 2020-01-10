@@ -325,14 +325,10 @@ view config model =
                 model.activeCategory
 
         mainPanel =
-            if model.hidden then
-                []
-
-            else
-                [ div [ class "emojis-main" ]
-                    [ emojis ]
-                , div [ class "icon-panel" ] icons
-                ]
+            [ div [ class "emojis-main" ]
+                [ emojis ]
+            , div [ class "icon-panel" ] icons
+            ]
 
         icons =
             List.map (displayCategoryIcon model.activeCategory) iconList

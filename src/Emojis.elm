@@ -1,4 +1,4 @@
-module Emojis exposing (emojiDict)
+module Emojis exposing (emojiDict, emojiList)
 
 import Dict exposing (Dict, fromList)
 import Types exposing (Category, Emoji)

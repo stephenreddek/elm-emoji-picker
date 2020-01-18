@@ -28,10 +28,11 @@ for an example of how to use the picker in your application!
 import Dict exposing (Dict, get, isEmpty)
 import Emojis
 import Html exposing (Html, div, input, p, span, text)
-import Html.Attributes exposing (class, hidden, style, value)
+import Html.Attributes exposing (class, hidden, style, title, value)
 import Html.Events exposing (onInput, preventDefaultOn)
 import Icons exposing (..)
 import Json.Decode
+import List.Extra
 import String exposing (String)
 import Types exposing (Category, Emoji)
 
@@ -50,13 +51,14 @@ configuration parameters.
 `offsetX`: the horizontal offset from where the picker is declared
 `offsetY`: the vertical offset from where the picker is declared
 `closeOnSelect`: whether or not the close the picker after an emoji is selected
-`emojiDisplay`: A function use to display the emojis differently than native
+`frequentlyUsed`: A list of emojis to display in the "frequently used" section. They should be the native emojis (what gets output when selected).
 
 -}
 type alias PickerConfig =
     { offsetX : Float
     , offsetY : Float
     , closeOnSelect : Bool
+    , frequentlyUsed : List String
     }
 
 
@@ -83,6 +85,7 @@ type alias Model =
     , offsetX : Float -- control the x-positon of the picker
     , offsetY : Float -- control the y-positon of the picker
     , closeOnSelect : Bool -- whether or not to close after an emoji is picked
+    , frequentlyUsed : List Emoji
     }
 
 
@@ -108,12 +111,30 @@ type Tab
 -}
 init : PickerConfig -> Model
 init config =
+    let
+        frequentlyUsed =
+            --TODO: how can we make this efficient?
+            List.filterMap
+                (\used ->
+                    List.Extra.find (\( _, { native } ) -> native == used) Emojis.emojiList
+                        |> Maybe.map Tuple.second
+                )
+                config.frequentlyUsed
+
+        initialTab =
+            if List.isEmpty frequentlyUsed then
+                ViewCategory (Tuple.first Icons.people)
+
+            else
+                FrequentlyUsed
+    in
     { skinColor = "none"
-    , activeTab = FrequentlyUsed
+    , activeTab = initialTab
     , hidden = True
     , closeOnSelect = config.closeOnSelect
     , offsetX = config.offsetX
     , offsetY = config.offsetY
+    , frequentlyUsed = frequentlyUsed
     }
 
 
@@ -236,6 +257,7 @@ displayEmoji config color emoji =
     span
         [ class "emoji"
         , preventDefaultOn "click" (Json.Decode.succeed ( Select native, True ))
+        , title emoji.name
         ]
         [ display ]
 
@@ -302,6 +324,16 @@ displayCategory config version emojiDict color cat =
 -}
 
 
+activeClass : String
+activeClass =
+    "path-active"
+
+
+inactiveClass : String
+inactiveClass =
+    "path-inactive"
+
+
 displayCategoryIcon : Tab -> ( Category, String -> Html Msg ) -> Html Msg
 displayCategoryIcon activeTab ( cat, icon ) =
     let
@@ -315,13 +347,10 @@ displayCategoryIcon activeTab ( cat, icon ) =
 
         updatedIcon =
             if Maybe.map .name selectedCategory == Just cat.name then
-                icon "path-active"
-                -- adds "active" class
+                icon activeClass
 
             else
-                icon "path-inactive"
-
-        -- adds "inactive" class
+                icon inactiveClass
     in
     span [ preventDefaultOn "click" (Json.Decode.succeed ( SelectCategory cat, True )) ]
         [ updatedIcon ]
@@ -342,9 +371,10 @@ view config model =
             case model.activeTab of
                 FrequentlyUsed ->
                     div [ class "category" ]
-                        [ p [ class "category-title" ]
+                        (p [ class "category-title" ]
                             [ text "Frequently Used" ]
-                        ]
+                            :: List.map (displayEmoji config model.skinColor) model.frequentlyUsed
+                        )
 
                 SearchResults search ->
                     div [ class "category" ]
@@ -385,8 +415,17 @@ view config model =
                 [ emojis ]
             ]
 
+        frequentlyUsedIcon =
+            span [ preventDefaultOn "click" (Json.Decode.succeed ( SelectFrequentlyUsed, True )) ]
+                [ if model.activeTab == FrequentlyUsed then
+                    Icons.frequentlyUsed activeClass
+
+                  else
+                    Icons.frequentlyUsed inactiveClass
+                ]
+
         icons =
-            List.map (displayCategoryIcon model.activeTab) iconList
+            frequentlyUsedIcon :: List.map (displayCategoryIcon model.activeTab) iconList
     in
     div [ class "elm-emoji-picker", hidden model.hidden ]
         [ div

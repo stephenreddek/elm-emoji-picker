@@ -42,6 +42,7 @@ pickerConfig =
     { offsetX = -281 -- x position relative to button
     , offsetY = -410 -- y position relative to button
     , closeOnSelect = True -- whether or not to close after an emoji is picked
+    , frequentlyUsed = [ "😀", "🖖", "👍", "🏈" ]
     }
 
 

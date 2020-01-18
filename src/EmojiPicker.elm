@@ -28,7 +28,7 @@ for an example of how to use the picker in your application!
 import Dict exposing (Dict, get, isEmpty)
 import Emojis
 import Html exposing (Html, div, input, p, span, text)
-import Html.Attributes exposing (class, hidden, style, title, value)
+import Html.Attributes exposing (autofocus, class, hidden, placeholder, style, title, type_, value)
 import Html.Events exposing (onInput, preventDefaultOn)
 import Icons exposing (..)
 import Json.Decode
@@ -406,11 +406,23 @@ view config model =
                 _ ->
                     ""
 
+        searchBar =
+            div [ class "search-bar" ]
+                [ Icons.search
+                , input
+                    [ class "search-input"
+                    , placeholder "Search"
+                    , type_ "search"
+                    , autofocus False
+                    , value searchValue
+                    , onInput SearchUpdated
+                    ]
+                    []
+                ]
+
         mainPanel =
             [ div [ class "icon-panel" ] icons
-            , div [ class "search-bar" ]
-                [ input [ value searchValue, onInput SearchUpdated ] []
-                ]
+            , searchBar
             , div [ class "emojis-main" ]
                 [ emojis ]
             ]

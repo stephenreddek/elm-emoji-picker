@@ -19,7 +19,6 @@ import Svg.Attributes
         ( class
         , d
         , height
-        , opacity
         , viewBox
         , width
         , xmlSpace

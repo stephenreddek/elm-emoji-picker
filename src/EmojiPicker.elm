@@ -28,7 +28,7 @@ for an example of how to use the picker in your application!
 import Dict exposing (Dict, get, isEmpty)
 import Emojis
 import Html exposing (Html, div, input, p, span, text)
-import Html.Attributes exposing (autofocus, class, hidden, placeholder, style, title, type_, value)
+import Html.Attributes exposing (autofocus, class, classList, hidden, placeholder, style, title, type_, value)
 import Html.Events exposing (onInput, preventDefaultOn)
 import Icons exposing (..)
 import Json.Decode
@@ -198,7 +198,11 @@ update msg model =
             ( newModel, Cmd.none )
 
         SearchUpdated search ->
-            ( { model | activeTab = SearchResults search }, Cmd.none )
+            if String.isEmpty search then
+                ( { model | activeTab = FrequentlyUsed }, Cmd.none )
+
+            else
+                ( { model | activeTab = SearchResults search }, Cmd.none )
 
 
 
@@ -296,8 +300,8 @@ getEmojisFromList version names emojiDict =
 -}
 
 
-displayCategory : ViewConfig Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
-displayCategory config version emojiDict color cat =
+displayCategory : Model -> ViewConfig Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
+displayCategory model config version emojiDict color cat =
     let
         -- get the emojis from cat.emojis
         catEmojis =
@@ -307,7 +311,7 @@ displayCategory config version emojiDict color cat =
         renderedEmojis =
             List.map (displayEmoji config color) catEmojis
     in
-    div [ class "category" ]
+    div [ class "category", classList [ ( "active", model.activeTab == ViewCategory cat ) ] ]
         ([ p [ class "category-title" ]
             [ text cat.name ]
          ]
@@ -367,36 +371,53 @@ view config model =
         emojiVersion =
             10
 
-        emojis =
+        frequentlyUsedTab =
             case model.activeTab of
                 FrequentlyUsed ->
-                    div [ class "category" ]
+                    div [ class "category active" ]
                         (p [ class "category-title" ]
                             [ text "Frequently Used" ]
                             :: List.map (displayEmoji config model.skinColor) model.frequentlyUsed
                         )
 
-                SearchResults search ->
+                _ ->
                     div [ class "category" ]
+                        [ p [ class "category-title" ]
+                            [ text "Frequently Used" ]
+                        ]
+
+        searchResults search =
+            if String.isEmpty search then
+                []
+
+            else
+                List.filterMap
+                    (\( emojiName, emoji ) ->
+                        if String.contains search emojiName then
+                            Just (displayEmoji config model.skinColor emoji)
+
+                        else
+                            Nothing
+                    )
+                    Emojis.emojiList
+
+        searchResultsTab =
+            case model.activeTab of
+                SearchResults search ->
+                    div [ class "category active" ]
                         (p [ class "category-title" ]
                             [ text "Search Results" ]
-                            :: List.filterMap
-                                (\( emojiName, emoji ) ->
-                                    if String.contains search emojiName then
-                                        Just (displayEmoji config model.skinColor emoji)
-
-                                    else
-                                        Nothing
-                                )
-                                Emojis.emojiList
+                            :: searchResults search
                         )
 
-                ViewCategory category ->
-                    displayCategory config
-                        emojiVersion
-                        Emojis.emojiDict
-                        model.skinColor
-                        category
+                _ ->
+                    div [ class "category" ]
+                        [ p [ class "category-title" ]
+                            [ text "Search Results" ]
+                        ]
+
+        categoryTabs =
+            List.map (\( category, _ ) -> displayCategory model config emojiVersion Emojis.emojiDict model.skinColor category) iconList
 
         searchValue =
             case model.activeTab of
@@ -423,8 +444,10 @@ view config model =
         mainPanel =
             [ div [ class "icon-panel" ] icons
             , searchBar
-            , div [ class "emojis-main" ]
-                [ emojis ]
+            , div [ class "emojis-main" ] <|
+                frequentlyUsedTab
+                    :: searchResultsTab
+                    :: categoryTabs
             ]
 
         frequentlyUsedIcon =

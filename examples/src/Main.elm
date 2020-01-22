@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Css exposing (..)
 import Css.Global exposing (body, everything, global, html)
-import EmojiPicker exposing (Model, Msg(..), PickerConfig, init, update, view)
+import EmojiPicker exposing (Model, Msg(..), init, update, view)
 import Html
 import Html.Styled
     exposing
@@ -12,7 +12,6 @@ import Html.Styled
         , button
         , div
         , fromUnstyled
-        , h1
         , p
         , text
         , textarea
@@ -20,6 +19,7 @@ import Html.Styled
         )
 import Html.Styled.Attributes exposing (class, css, placeholder, rows, value)
 import Html.Styled.Events exposing (onClick, onInput)
+import List.Extra
 
 
 
@@ -29,6 +29,7 @@ import Html.Styled.Events exposing (onClick, onInput)
 
 type alias Model =
     { text : String
+    , usedEmoji : List String
     , emojiModel : EmojiPicker.Model
     }
 
@@ -37,7 +38,6 @@ type alias Model =
 {- (2) initialize the picker with a PickerConfig -}
 
 
-pickerConfig : PickerConfig
 pickerConfig =
     { offsetX = -281 -- x position relative to button
     , offsetY = -410 -- y position relative to button
@@ -48,7 +48,8 @@ pickerConfig =
 initialModel : Model
 initialModel =
     { text = ""
-    , emojiModel = EmojiPicker.init pickerConfig
+    , usedEmoji = []
+    , emojiModel = EmojiPicker.init pickerConfig { emojiDisplay = Nothing, frequentlyUsed = [] }
     }
 
 
@@ -89,12 +90,16 @@ update msg model =
                         subModel =
                             model.emojiModel
 
+                        usedEmoji =
+                            List.Extra.unique (s :: model.usedEmoji)
+
                         ( newSubModel, _ ) =
-                            EmojiPicker.update subMsg subModel
+                            EmojiPicker.update { emojiDisplay = Nothing, frequentlyUsed = usedEmoji } subMsg subModel
 
                         newModel =
                             { model
                                 | text = model.text ++ s
+                                , usedEmoji = usedEmoji
                                 , emojiModel = newSubModel
                             }
                     in
@@ -106,7 +111,7 @@ update msg model =
                             model.emojiModel
 
                         ( newSubModel, _ ) =
-                            EmojiPicker.update subMsg subModel
+                            EmojiPicker.update { emojiDisplay = Nothing, frequentlyUsed = model.usedEmoji } subMsg subModel
                     in
                     ( { model | emojiModel = newSubModel }, Cmd.none )
 
@@ -120,7 +125,7 @@ view model =
     let
         -- (6) include the picker in the view
         picker =
-            EmojiPicker.view { emojiDisplay = Nothing } model.emojiModel
+            EmojiPicker.view { emojiDisplay = Nothing, frequentlyUsed = model.usedEmoji } model.emojiModel
                 |> fromUnstyled
                 |> Html.Styled.map EmojiMsg
     in

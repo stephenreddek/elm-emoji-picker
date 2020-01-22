@@ -2,11 +2,13 @@ module Icons exposing
     ( activity
     , flags
     , foods
+    , frequentlyUsed
     , iconList
     , nature
     , objects
     , people
     , places
+    , search
     , symbols
     )
 
@@ -17,7 +19,6 @@ import Svg.Attributes
         ( class
         , d
         , height
-        , opacity
         , viewBox
         , width
         , xmlSpace
@@ -36,6 +37,21 @@ import Types exposing (Category)
  -------------------------------------------------------------}
 
 
+search : Html msg
+search =
+    svg
+        [ class "search-icon"
+        , xmlSpace "http://www.w3.org/2000/svg"
+        , viewBox "0 0 20 20"
+        , width "13"
+        , height "13"
+        ]
+        [ path
+            [ d "M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33-1.42 1.42-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z" ]
+            []
+        ]
+
+
 iconList : List ( Category, String -> Html msg )
 iconList =
     [ people
@@ -47,6 +63,28 @@ iconList =
     , symbols
     , flags
     ]
+
+
+frequentlyUsed : String -> Html msg
+frequentlyUsed className =
+    svg
+        [ class "category-icon"
+        , xmlSpace "http://www.w3.org/2000/svg"
+        , viewBox "0 0 24 24"
+        , width "24"
+        , height "24"
+        ]
+        [ path
+            [ class className
+            , d "M13 4h-2l-.001 7H9v2h2v2h2v-2h4v-2h-4z"
+            ]
+            []
+        , path
+            [ class className
+            , d "M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0m0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10"
+            ]
+            []
+        ]
 
 
 activity : ( Category, String -> Html msg )

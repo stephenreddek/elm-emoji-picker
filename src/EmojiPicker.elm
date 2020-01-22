@@ -1,6 +1,6 @@
 module EmojiPicker exposing
     ( Model, Msg(..)
-    , PickerConfig, init, ViewConfig
+    , init, Config
     , view, update
     )
 
@@ -16,7 +16,7 @@ for an example of how to use the picker in your application!
 
 # Config & Initialization
 
-@docs PickerConfig, init, ViewConfig
+@docs init, Config
 
 
 # Functions to use in integration
@@ -26,14 +26,13 @@ for an example of how to use the picker in your application!
 -}
 
 import Dict exposing (Dict, get, isEmpty)
-import Emojis exposing (emojiDict)
-import Html exposing (Html, div, p, span, text)
-import Html.Attributes exposing (class, hidden, style)
-import Html.Events exposing (preventDefaultOn)
+import Emojis
+import Html exposing (Html, div, input, p, span, text)
+import Html.Attributes exposing (autofocus, class, classList, hidden, placeholder, style, title, type_, value)
+import Html.Events exposing (onInput, preventDefaultOn)
 import Icons exposing (..)
 import Json.Decode
 import String exposing (String)
-import Tuple exposing (first)
 import Types exposing (Category, Emoji)
 
 
@@ -45,29 +44,16 @@ type alias SkinColor =
     String
 
 
-{-| When initializing the emoji picker, you'll need to provide a few
-configuration parameters.
-
-`offsetX`: the horizontal offset from where the picker is declared
-`offsetY`: the vertical offset from where the picker is declared
-`closeOnSelect`: whether or not the close the picker after an emoji is selected
-`emojiDisplay`: A function use to display the emojis differently than native
-
--}
-type alias PickerConfig =
-    { offsetX : Float
-    , offsetY : Float
-    , closeOnSelect : Bool
-    }
-
-
 {-| When viewing the emoji picker, you'll need to provide these parameters.
 
 `emojiDisplay`: A function use to display the emojis differently than native
+`frequentlyUsed`: A list of emojis to display in the "frequently used" section. They should be the native emojis (what gets output when selected).
 
 -}
-type alias ViewConfig msg =
-    { emojiDisplay : Maybe (String -> Html msg) }
+type alias Config msg =
+    { emojiDisplay : Maybe (String -> Html msg)
+    , frequentlyUsed : List String
+    }
 
 
 {-| The internal state of the emoji picker.
@@ -79,7 +65,7 @@ emoji variants.
 -}
 type alias Model =
     { skinColor : SkinColor -- for future use (some emojis have variants)
-    , activeCategory : Category -- for displaying emojis
+    , activeTab : Tab -- for displaying emojis
     , hidden : Bool -- for toggling the emoji picker
     , offsetX : Float -- control the x-positon of the picker
     , offsetY : Float -- control the y-positon of the picker
@@ -87,28 +73,38 @@ type alias Model =
     }
 
 
+type Tab
+    = FrequentlyUsed
+    | SearchResults String
+    | ViewCategory Category
+
+
 {-| This is the function to call to initialize the emoji picker.
 
-    pickerConfig : PickerConfig
-    pickerConfig =
+    initialConfig =
         { offsetX = -271
         , offsetY = -410
         , closeOnSelect = True
         }
 
+    config =
+        { emojiDisplay = Nothing
+        , frequentlyUsed = []
+        }
+
     emojiModel : EmojiPicker.Model
     emojiModel =
-        EmojiPicker.init pickerConfig
+        EmojiPicker.init initialConfig config
 
 -}
-init : PickerConfig -> Model
-init config =
+init : { offsetX : Float, offsetY : Float, closeOnSelect : Bool } -> Config msg -> Model
+init { offsetX, offsetY, closeOnSelect } config =
     { skinColor = "none"
-    , activeCategory = first people
+    , activeTab = initialTab config
     , hidden = True
-    , closeOnSelect = config.closeOnSelect
-    , offsetX = config.offsetX
-    , offsetY = config.offsetY
+    , closeOnSelect = closeOnSelect
+    , offsetX = offsetX
+    , offsetY = offsetY
     }
 
 
@@ -128,7 +124,9 @@ type Msg
     | Toggle
     | ChooseSkinColor SkinColor
     | SelectCategory Category
+    | SelectFrequentlyUsed
     | Select String
+    | SearchUpdated String
 
 
 {-| You'll need to catch the `Select` message in your parent module to
@@ -136,14 +134,22 @@ obtain the emoji from the picker. However, don't forget to propagate the
 messages down to this function, because some internal states will probably
 need to be updated.
 -}
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Config msg -> Msg -> Model -> ( Model, Cmd Msg )
+update config msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
 
         Toggle ->
-            ( { model | hidden = not model.hidden }, Cmd.none )
+            let
+                tab =
+                    if model.hidden then
+                        initialTab config
+
+                    else
+                        model.activeTab
+            in
+            ( { model | hidden = not model.hidden, activeTab = tab }, Cmd.none )
 
         -- currently this case is never called, but in the future we might
         -- add in a skin color selector for users to choose different emoji
@@ -151,8 +157,11 @@ update msg model =
         ChooseSkinColor s ->
             ( { model | skinColor = s }, Cmd.none )
 
-        SelectCategory cat ->
-            ( { model | activeCategory = cat }, Cmd.none )
+        SelectCategory selected ->
+            ( { model | activeTab = ViewCategory selected }, Cmd.none )
+
+        SelectFrequentlyUsed ->
+            ( { model | activeTab = FrequentlyUsed }, Cmd.none )
 
         -- catch this in the parent. 's' is the emoji.
         Select s ->
@@ -165,6 +174,22 @@ update msg model =
                         model
             in
             ( newModel, Cmd.none )
+
+        SearchUpdated search ->
+            if String.isEmpty search then
+                ( { model | activeTab = FrequentlyUsed }, Cmd.none )
+
+            else
+                ( { model | activeTab = SearchResults search }, Cmd.none )
+
+
+initialTab : Config msg -> Tab
+initialTab config =
+    if List.isEmpty config.frequentlyUsed then
+        ViewCategory (Tuple.first Icons.people)
+
+    else
+        FrequentlyUsed
 
 
 
@@ -208,7 +233,7 @@ selectSkinVariation color emoji =
 -}
 
 
-displayEmoji : ViewConfig Msg -> SkinColor -> Emoji -> Html Msg
+displayEmoji : Config Msg -> SkinColor -> Emoji -> Html Msg
 displayEmoji config color emoji =
     let
         -- "native" is the literal emoji string
@@ -223,6 +248,7 @@ displayEmoji config color emoji =
     span
         [ class "emoji"
         , preventDefaultOn "click" (Json.Decode.succeed ( Select native, True ))
+        , title emoji.name
         ]
         [ display ]
 
@@ -261,8 +287,8 @@ getEmojisFromList version names emojiDict =
 -}
 
 
-displayCategory : ViewConfig Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
-displayCategory config version emojiDict color cat =
+displayCategory : Model -> Config Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
+displayCategory model config version emojiDict color cat =
     let
         -- get the emojis from cat.emojis
         catEmojis =
@@ -272,7 +298,7 @@ displayCategory config version emojiDict color cat =
         renderedEmojis =
             List.map (displayEmoji config color) catEmojis
     in
-    div [ class "category" ]
+    div [ class "category", classList [ ( "active", model.activeTab == ViewCategory cat ) ] ]
         ([ p [ class "category-title" ]
             [ text cat.name ]
          ]
@@ -289,18 +315,33 @@ displayCategory config version emojiDict color cat =
 -}
 
 
-displayCategoryIcon : Category -> ( Category, String -> Html Msg ) -> Html Msg
-displayCategoryIcon activeCat ( cat, icon ) =
+activeClass : String
+activeClass =
+    "path-active"
+
+
+inactiveClass : String
+inactiveClass =
+    "path-inactive"
+
+
+displayCategoryIcon : Tab -> ( Category, String -> Html Msg ) -> Html Msg
+displayCategoryIcon activeTab ( cat, icon ) =
     let
+        selectedCategory =
+            case activeTab of
+                ViewCategory category ->
+                    Just category
+
+                _ ->
+                    Nothing
+
         updatedIcon =
-            if (==) activeCat.name cat.name then
-                icon "path-active"
-                -- adds "active" class
+            if Maybe.map .name selectedCategory == Just cat.name then
+                icon activeClass
 
             else
-                icon "path-inactive"
-
-        -- adds "inactive" class
+                icon inactiveClass
     in
     span [ preventDefaultOn "click" (Json.Decode.succeed ( SelectCategory cat, True )) ]
         [ updatedIcon ]
@@ -308,7 +349,7 @@ displayCategoryIcon activeCat ( cat, icon ) =
 
 {-| Use this function to instantiate the actual `Html msg` for the picker.
 -}
-view : ViewConfig Msg -> Model -> Html.Html Msg
+view : Config Msg -> Model -> Html.Html Msg
 view config model =
     let
         -- i've set the version to 10 here, since that seems to be the version that
@@ -317,21 +358,101 @@ view config model =
         emojiVersion =
             10
 
-        emojis =
-            displayCategory config
-                emojiVersion
-                emojiDict
-                model.skinColor
-                model.activeCategory
+        frequentlyUsedTab =
+            case model.activeTab of
+                FrequentlyUsed ->
+                    div [ class "category active" ]
+                        (p [ class "category-title" ]
+                            [ text "Frequently Used" ]
+                            :: List.filterMap
+                                (\emoji ->
+                                    Dict.get emoji Emojis.emojiByNative
+                                        |> Maybe.map (displayEmoji config model.skinColor)
+                                )
+                                config.frequentlyUsed
+                        )
+
+                _ ->
+                    div [ class "category" ]
+                        [ p [ class "category-title" ]
+                            [ text "Frequently Used" ]
+                        ]
+
+        searchResults search =
+            if String.isEmpty search then
+                []
+
+            else
+                List.filterMap
+                    (\( emojiName, emoji ) ->
+                        if String.contains search emojiName then
+                            Just (displayEmoji config model.skinColor emoji)
+
+                        else
+                            Nothing
+                    )
+                    Emojis.emojiList
+
+        searchResultsTab =
+            case model.activeTab of
+                SearchResults search ->
+                    div [ class "category active" ]
+                        (p [ class "category-title" ]
+                            [ text "Search Results" ]
+                            :: searchResults search
+                        )
+
+                _ ->
+                    div [ class "category" ]
+                        [ p [ class "category-title" ]
+                            [ text "Search Results" ]
+                        ]
+
+        categoryTabs =
+            List.map (\( category, _ ) -> displayCategory model config emojiVersion Emojis.emojiByShortName model.skinColor category) iconList
+
+        searchValue =
+            case model.activeTab of
+                SearchResults search ->
+                    search
+
+                _ ->
+                    ""
+
+        searchBar =
+            div [ class "search-bar" ]
+                [ Icons.search
+                , input
+                    [ class "search-input"
+                    , placeholder "Search"
+                    , type_ "search"
+                    , autofocus False
+                    , value searchValue
+                    , onInput SearchUpdated
+                    ]
+                    []
+                ]
 
         mainPanel =
-            [ div [ class "emojis-main" ]
-                [ emojis ]
-            , div [ class "icon-panel" ] icons
+            [ div [ class "icon-panel" ] icons
+            , searchBar
+            , div [ class "emojis-main" ] <|
+                frequentlyUsedTab
+                    :: searchResultsTab
+                    :: categoryTabs
             ]
 
+        frequentlyUsedIcon =
+            span [ preventDefaultOn "click" (Json.Decode.succeed ( SelectFrequentlyUsed, True )) ]
+                [ if model.activeTab == FrequentlyUsed then
+                    Icons.frequentlyUsed activeClass
+
+                  else
+                    Icons.frequentlyUsed inactiveClass
+                ]
+
         icons =
-            List.map (displayCategoryIcon model.activeCategory) iconList
+            frequentlyUsedIcon :: List.map (displayCategoryIcon model.activeTab) iconList
     in
     div [ class "elm-emoji-picker", hidden model.hidden ]
         [ div

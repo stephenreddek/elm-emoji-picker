@@ -1,6 +1,6 @@
 module EmojiPicker exposing
     ( Model, Msg(..)
-    , PickerConfig, init, ViewConfig
+    , init, Config
     , view, update
     )
 
@@ -16,7 +16,7 @@ for an example of how to use the picker in your application!
 
 # Config & Initialization
 
-@docs PickerConfig, init, ViewConfig
+@docs init, Config
 
 
 # Functions to use in integration
@@ -32,7 +32,6 @@ import Html.Attributes exposing (autofocus, class, classList, hidden, placeholde
 import Html.Events exposing (onInput, preventDefaultOn)
 import Icons exposing (..)
 import Json.Decode
-import List.Extra
 import String exposing (String)
 import Types exposing (Category, Emoji)
 
@@ -45,28 +44,13 @@ type alias SkinColor =
     String
 
 
-{-| When initializing the emoji picker, you'll need to provide a few
-configuration parameters.
-
-`offsetX`: the horizontal offset from where the picker is declared
-`offsetY`: the vertical offset from where the picker is declared
-`closeOnSelect`: whether or not the close the picker after an emoji is selected
-
--}
-type alias PickerConfig =
-    { offsetX : Float
-    , offsetY : Float
-    , closeOnSelect : Bool
-    }
-
-
 {-| When viewing the emoji picker, you'll need to provide these parameters.
 
 `emojiDisplay`: A function use to display the emojis differently than native
 `frequentlyUsed`: A list of emojis to display in the "frequently used" section. They should be the native emojis (what gets output when selected).
 
 -}
-type alias ViewConfig msg =
+type alias Config msg =
     { emojiDisplay : Maybe (String -> Html msg)
     , frequentlyUsed : List String
     }
@@ -97,34 +81,30 @@ type Tab
 
 {-| This is the function to call to initialize the emoji picker.
 
-    pickerConfig : PickerConfig
-    pickerConfig =
+    initialConfig =
         { offsetX = -271
         , offsetY = -410
         , closeOnSelect = True
         }
 
+    config =
+        { emojiDisplay = Nothing
+        , frequentlyUsed = []
+        }
+
     emojiModel : EmojiPicker.Model
     emojiModel =
-        EmojiPicker.init pickerConfig
+        EmojiPicker.init initialConfig config
 
 -}
-init : PickerConfig -> ViewConfig msg -> Model
-init config viewConfig =
-    let
-        initialTab =
-            if List.isEmpty viewConfig.frequentlyUsed then
-                ViewCategory (Tuple.first Icons.people)
-
-            else
-                FrequentlyUsed
-    in
+init : { offsetX : Float, offsetY : Float, closeOnSelect : Bool } -> Config msg -> Model
+init { offsetX, offsetY, closeOnSelect } config =
     { skinColor = "none"
-    , activeTab = initialTab
+    , activeTab = initialTab config
     , hidden = True
-    , closeOnSelect = config.closeOnSelect
-    , offsetX = config.offsetX
-    , offsetY = config.offsetY
+    , closeOnSelect = closeOnSelect
+    , offsetX = offsetX
+    , offsetY = offsetY
     }
 
 
@@ -154,14 +134,22 @@ obtain the emoji from the picker. However, don't forget to propagate the
 messages down to this function, because some internal states will probably
 need to be updated.
 -}
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Config msg -> Msg -> Model -> ( Model, Cmd Msg )
+update config msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
 
         Toggle ->
-            ( { model | hidden = not model.hidden }, Cmd.none )
+            let
+                tab =
+                    if model.hidden then
+                        initialTab config
+
+                    else
+                        model.activeTab
+            in
+            ( { model | hidden = not model.hidden, activeTab = tab }, Cmd.none )
 
         -- currently this case is never called, but in the future we might
         -- add in a skin color selector for users to choose different emoji
@@ -193,6 +181,15 @@ update msg model =
 
             else
                 ( { model | activeTab = SearchResults search }, Cmd.none )
+
+
+initialTab : Config msg -> Tab
+initialTab config =
+    if List.isEmpty config.frequentlyUsed then
+        ViewCategory (Tuple.first Icons.people)
+
+    else
+        FrequentlyUsed
 
 
 
@@ -236,7 +233,7 @@ selectSkinVariation color emoji =
 -}
 
 
-displayEmoji : ViewConfig Msg -> SkinColor -> Emoji -> Html Msg
+displayEmoji : Config Msg -> SkinColor -> Emoji -> Html Msg
 displayEmoji config color emoji =
     let
         -- "native" is the literal emoji string
@@ -290,7 +287,7 @@ getEmojisFromList version names emojiDict =
 -}
 
 
-displayCategory : Model -> ViewConfig Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
+displayCategory : Model -> Config Msg -> Int -> Dict String Emoji -> SkinColor -> Category -> Html Msg
 displayCategory model config version emojiDict color cat =
     let
         -- get the emojis from cat.emojis
@@ -352,7 +349,7 @@ displayCategoryIcon activeTab ( cat, icon ) =
 
 {-| Use this function to instantiate the actual `Html msg` for the picker.
 -}
-view : ViewConfig Msg -> Model -> Html.Html Msg
+view : Config Msg -> Model -> Html.Html Msg
 view config model =
     let
         -- i've set the version to 10 here, since that seems to be the version that

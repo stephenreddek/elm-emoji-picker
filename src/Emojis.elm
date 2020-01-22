@@ -1,4 +1,4 @@
-module Emojis exposing (emojiDict, emojiList)
+module Emojis exposing (emojiByNative, emojiByShortName, emojiList)
 
 import Dict exposing (Dict, fromList)
 import Types exposing (Category, Emoji)
@@ -1568,6 +1568,13 @@ emojiList =
     ]
 
 
-emojiDict : Dict String Emoji
-emojiDict =
+emojiByShortName : Dict String Emoji
+emojiByShortName =
     Dict.fromList emojiList
+
+
+emojiByNative : Dict String Emoji
+emojiByNative =
+    emojiList
+        |> List.map (\( _, emoji ) -> ( emoji.native, emoji ))
+        |> Dict.fromList

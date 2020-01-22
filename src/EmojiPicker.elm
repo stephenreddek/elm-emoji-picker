@@ -51,24 +51,25 @@ configuration parameters.
 `offsetX`: the horizontal offset from where the picker is declared
 `offsetY`: the vertical offset from where the picker is declared
 `closeOnSelect`: whether or not the close the picker after an emoji is selected
-`frequentlyUsed`: A list of emojis to display in the "frequently used" section. They should be the native emojis (what gets output when selected).
 
 -}
 type alias PickerConfig =
     { offsetX : Float
     , offsetY : Float
     , closeOnSelect : Bool
-    , frequentlyUsed : List String
     }
 
 
 {-| When viewing the emoji picker, you'll need to provide these parameters.
 
 `emojiDisplay`: A function use to display the emojis differently than native
+`frequentlyUsed`: A list of emojis to display in the "frequently used" section. They should be the native emojis (what gets output when selected).
 
 -}
 type alias ViewConfig msg =
-    { emojiDisplay : Maybe (String -> Html msg) }
+    { emojiDisplay : Maybe (String -> Html msg)
+    , frequentlyUsed : List String
+    }
 
 
 {-| The internal state of the emoji picker.
@@ -85,7 +86,6 @@ type alias Model =
     , offsetX : Float -- control the x-positon of the picker
     , offsetY : Float -- control the y-positon of the picker
     , closeOnSelect : Bool -- whether or not to close after an emoji is picked
-    , frequentlyUsed : List Emoji
     }
 
 
@@ -109,20 +109,11 @@ type Tab
         EmojiPicker.init pickerConfig
 
 -}
-init : PickerConfig -> Model
-init config =
+init : PickerConfig -> ViewConfig msg -> Model
+init config viewConfig =
     let
-        frequentlyUsed =
-            --TODO: how can we make this efficient?
-            List.filterMap
-                (\used ->
-                    List.Extra.find (\( _, { native } ) -> native == used) Emojis.emojiList
-                        |> Maybe.map Tuple.second
-                )
-                config.frequentlyUsed
-
         initialTab =
-            if List.isEmpty frequentlyUsed then
+            if List.isEmpty viewConfig.frequentlyUsed then
                 ViewCategory (Tuple.first Icons.people)
 
             else
@@ -134,7 +125,6 @@ init config =
     , closeOnSelect = config.closeOnSelect
     , offsetX = config.offsetX
     , offsetY = config.offsetY
-    , frequentlyUsed = frequentlyUsed
     }
 
 
@@ -377,7 +367,12 @@ view config model =
                     div [ class "category active" ]
                         (p [ class "category-title" ]
                             [ text "Frequently Used" ]
-                            :: List.map (displayEmoji config model.skinColor) model.frequentlyUsed
+                            :: List.filterMap
+                                (\emoji ->
+                                    Dict.get emoji Emojis.emojiByNative
+                                        |> Maybe.map (displayEmoji config model.skinColor)
+                                )
+                                config.frequentlyUsed
                         )
 
                 _ ->
@@ -417,7 +412,7 @@ view config model =
                         ]
 
         categoryTabs =
-            List.map (\( category, _ ) -> displayCategory model config emojiVersion Emojis.emojiDict model.skinColor category) iconList
+            List.map (\( category, _ ) -> displayCategory model config emojiVersion Emojis.emojiByShortName model.skinColor category) iconList
 
         searchValue =
             case model.activeTab of
